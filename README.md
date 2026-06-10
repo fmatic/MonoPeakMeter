@@ -3,7 +3,6 @@
 ![Release](https://img.shields.io/github/v/release/fmatic/MonoPeakMeter?display_name=tag&style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-browser-green?style=flat-square)
 ![Version](https://img.shields.io/badge/version-0.5.0-00c8ff?style=flat-square)
-
 [![Support my work](https://img.shields.io/badge/Support-My%20Work-333333?style=flat-square&logo=buymeacoffee&logoColor=white)](https://buymeacoffee.com/jannedx)
 
 ![Mono Peakmeter Demo](docs/IMG_5430.GIF)
