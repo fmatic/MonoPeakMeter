@@ -1,11 +1,11 @@
 # FM-DX Webserver Broadcast Meter
 
-![Release](https://img.shields.io/github/v/release/fmatic/MonoPeakMeter?display_name=tag&style=flat-square)
+![Release](https://img.shields.io/github/v/release/fmatic/BroadcastMeter?display_name=tag&style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-browser-green?style=flat-square)
 ![Version](https://img.shields.io/badge/version-0.5.0-00c8ff?style=flat-square)
 [![Support my work](https://img.shields.io/badge/Support-My%20Work-333333?style=flat-square&logo=buymeacoffee&logoColor=white)](https://buymeacoffee.com/jannedx)
 
-![Mono Peakmeter Demo](docs/IMG_5430.GIF)
+![Broadcast Meter Demo](docs/IMG_5430.GIF)
 
 A modern RF/audio peak meter plugin for FM-DX Webserver inspired by professional broadcast monitor equipment and classic studio peak meters.
 
@@ -18,6 +18,8 @@ Designed especially for FM-DX monitoring with smooth animations, peak hold indic
 - Live RF signal meter
 - Live audio modulation meter
 - Peak hold indicators
+- Stereo indicator
+- RDS activity indicator
 - CLIP warning indicator
 - Smooth interpolation and animations
 - Broadcast style gradient meters
@@ -49,30 +51,33 @@ Designed especially for FM-DX monitoring with smooth animations, peak hold indic
 
 Enable lightweight compact mode:
 
-```js
-const COMPACT_MODE = true;
+`const COMPACT_MODE = true;`
 
 Enable full-size broadcast monitor mode:
 
-```js
-const COMPACT_MODE = false;
+`const COMPACT_MODE = false;`
+
+---
 
 ## Planned Features
 
-* Stereo / mono detection
-* Stereo pilot detection
-* Additional meter skins
-* Vintage broadcast processor themes
-* Tune Panel integration
-* More responsive layouts
-* Advanced peak algorithms
+- Improved stereo / mono detection
+- Additional meter skins
+- Vintage broadcast processor themes
+- Tune Panel integration
+- More responsive layouts
+- Advanced peak algorithms
+- Customizable LED indicators
 
+---
 
 ## Support
 
 If you like this project and want to support development:
 
 [Buy Me a Coffee](https://buymeacoffee.com/jannedx)
+
+---
 
 ## License
 
