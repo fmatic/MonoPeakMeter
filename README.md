@@ -1,5 +1,10 @@
 # FM-DX Webserver Mono Peakmeter
 
+![GitHub Release](https://img.shields.io/github/v/release/fmatic/MonoPeakMeter)
+![Platform](https://img.shields.io/badge/platform-browser-green)
+[![Support my work](https://img.shields.io/badge/Support-My%20Work-333333?style=flat-square&logo=buymeacoffee&logoColor=white)](https://buymeacoffee.com/jannedx)
+
+
 A compact mono RF/audio peak meter plugin for FM-DX Webserver.
 
 Features:
