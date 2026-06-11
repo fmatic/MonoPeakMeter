@@ -1,4 +1,4 @@
-# FM-DX Webserver Broadcast Meter
+# FM-DX Webserver Signal Scope
 
 ![Release](https://img.shields.io/github/v/release/fmatic/BroadcastMeter?display_name=tag&style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-browser-green?style=flat-square)
