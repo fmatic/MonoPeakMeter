@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////////////////
 ///                                                                                ///
-///  SIGNAL SCOPE FOR FM-DX-WEBSERVER (V0.5.1)                                     ///
+///  SIGNAL SCOPE FOR FM-DX-WEBSERVER (V0.5.2)                                     ///
 ///                                                                                ///
 ///  RF signal and audio modulation meter with broadcast-style status indicators.  ///
 ///                                                                                ///
@@ -19,11 +19,75 @@
     'use strict';
 
     const pluginName = 'Signal Scope';
-    const pluginVersion = '0.5.1';
+    const pluginVersion = '0.5.2';
     const AUDIO_SENSITIVITY = 520;
     const AUDIO_NOISE_FLOOR = 0.012;
     const CLIP_THRESHOLD = 98;
     const COMPACT_MODE = false;
+
+    const STORAGE_THEME = 'SIGNAL_SCOPE_THEME';
+    const STORAGE_METER_STYLE = 'SIGNAL_SCOPE_METER_STYLE';
+
+    const DEFAULT_THEME = 'webserver';
+    const DEFAULT_METER_STYLE = 'classic';
+
+    const VALID_THEMES = [
+        'webserver',
+        'matrixGreen',
+        'dxGreen',
+        'amberOrange',
+        'arcticCyan',
+        'nightwishPurple'
+    ];
+
+    const VALID_METER_STYLES = [
+        'classic',
+        'segmented',
+        'led',
+        'thin',
+        'neon'
+    ];
+
+    const SIGNAL_SCOPE_THEMES = {
+        webserver: {
+            name: 'Webserver Theme',
+            low: null,
+            mid: null,
+            high: null
+        },
+        matrixGreen: {
+            name: 'Matrix Green',
+            low: '#00ff66',
+            mid: '#9dff00',
+            high: '#ffd000'
+        },
+        dxGreen: {
+            name: 'DX Green',
+            low: '#54c750',
+            mid: '#9dff7a',
+            high: '#fff07a'
+        },
+        amberOrange: {
+            name: 'Amber Orange',
+            low: '#fb923c',
+            mid: '#ffaa00',
+            high: '#ffd166'
+        },
+        arcticCyan: {
+            name: 'Arctic Cyan',
+            low: '#22d3ee',
+            mid: '#7dd3fc',
+            high: '#e0faff'
+        },
+        nightwishPurple: {
+            name: 'Nightwish Purple',
+            low: '#9d7cff',
+            mid: '#c084fc',
+            high: '#f0abfc'
+        }
+    };
+    let activeThemeName = loadThemeName();
+    let activeMeterStyle = loadMeterStyle();
 
     const pluginSetupOnlyNotify = true;
     const CHECK_FOR_UPDATES = true;
@@ -54,6 +118,12 @@
     let peakS = 0;
     let peakA = 0;
 
+    let settingsOpen = false;
+    let settingsPanel = null;
+
+    let settingsOutsideHandler = null;
+    let settingsKeyHandler = null;
+
     if (CHECK_FOR_UPDATES) {
         checkUpdate(pluginSetupOnlyNotify, pluginName, pluginHomepageUrl, pluginUpdateUrl);
     }
@@ -74,10 +144,69 @@
         return value || fallback;
     }
 
+    function safeLSGet(key) {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function safeLSSet(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {}
+    }
+
+    function loadEnum(key, fallback, allowed) {
+        const value = safeLSGet(key);
+
+        if (!value || !allowed.includes(value)) {
+            return fallback;
+        }
+
+        return value;
+    }
+
+    function loadThemeName() {
+        return loadEnum(STORAGE_THEME, DEFAULT_THEME, VALID_THEMES);
+    }
+
+    function loadMeterStyle() {
+        const value = safeLSGet(STORAGE_METER_STYLE);
+
+        if (value === 'minimal') {
+            safeLSSet(STORAGE_METER_STYLE, 'thin');
+            return 'thin';
+        }
+
+        return loadEnum(STORAGE_METER_STYLE, DEFAULT_METER_STYLE, VALID_METER_STYLES);
+    }
+
+    function getActiveThemePalette() {
+        const selected = SIGNAL_SCOPE_THEMES[activeThemeName];
+
+        if (selected && selected.low && selected.mid && selected.high) {
+            return selected;
+        }
+
+        return {
+            name: 'Webserver Theme',
+            low: cssVar('--color-5', '#00ff66'),
+            mid: '#9dff00',
+            high: '#ffd000'
+        };
+    }
+
     function getThemeColors() {
+        const palette = getActiveThemePalette();
+
         return {
             text: cssVar('--color-text', '#d9ffff'),
-            accent: cssVar('--color-5', '#00ff66'),
+            low: palette.low,
+            mid: palette.mid,
+            high: palette.high,
+            danger: '#ff3030',
             panelBg: cssVar('--color-2-transparent', 'rgba(10, 25, 28, 0.95)'),
             border: cssVar('--color-3-transparent', 'rgba(200, 255, 255, 0.16)')
         };
@@ -270,13 +399,15 @@
 
         ctx = canvas.getContext('2d');
 
+        createSettingsButton(panel);
+
         injectStyles();
     }
 
     function injectStyles() {
         const style = document.createElement('style');
 
-  style.textContent = `
+        style.textContent = `
         #signal-scope-container {
             background: transparent !important;
             backdrop-filter: none !important;
@@ -334,25 +465,479 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         updateIndicators();
         drawIndicators();
-        drawBar({
+        drawMeterBar({
             label: 'S',
             y: COMPACT_MODE ? 5 : 18,
             value: sValue,
-            scale: COMPACT_MODE ? [] : ['1', '3', '5', '7', '9', '+10', '+20', '+30', '+40'],
-            ticks: COMPACT_MODE ? [] : [10, 22, 34, 46, 58, 68, 78, 88, 98]
+            scale: COMPACT_MODE ? [] : ['1', '3', '5', '7', '9', '+20', '+40'],
+            ticks: COMPACT_MODE ? [] : [10, 22, 34, 46, 58, 78, 98]
         });
 
-        drawBar({
+        drawMeterBar({
             label: 'A',
             y: COMPACT_MODE ? 24 : 50,
             value: aValue,
-            scale: COMPACT_MODE ? [] : ['0', '10', '30', '50', '70', '100'],
-            ticks: COMPACT_MODE ? [] : [0, 10, 30, 50, 70, 100]
+            scale: COMPACT_MODE ? [] : ['0', '25', '50', '75', '100'],
+            ticks: COMPACT_MODE ? [] : [0, 25, 50, 75, 100]
         });
 
     }
 
-    function drawBar({
+    function drawSegmentedBar({
+        label,
+        y,
+        value,
+        scale,
+        ticks,
+        ledMode = false
+    }) {
+        const x = COMPACT_MODE ? 22 : 36;
+        const w = COMPACT_MODE ? 230 : 250;
+        const h = COMPACT_MODE ? 8 : 7;
+
+        const theme = getThemeColors();
+        const segments = ledMode ? (COMPACT_MODE ? 46 : 58) : (COMPACT_MODE ? 34 : 42);
+        const gap = ledMode ? 3 : 2;
+        const segmentW = (w - gap * (segments - 1)) / segments;
+        const activeSegments = Math.round((clamp(value, 0, 100) / 100) * segments);
+
+        ctx.font = 'bold 11px Arial, sans-serif';
+        ctx.fillStyle = theme.text;
+        ctx.textAlign = 'right';
+        ctx.fillText(label, x - 8, y + 7);
+
+        // Background frame
+        ctx.fillStyle = theme.panelBg;
+        ctx.fillRect(x, y, w, h);
+
+        ctx.strokeStyle = theme.border;
+        ctx.strokeRect(x, y, w, h);
+
+        for (let i = 0; i < segments; i++) {
+            const sx = x + i * (segmentW + gap);
+            const ratio = i / Math.max(1, segments - 1);
+
+            const isActive = i < activeSegments;
+
+            if (ratio < 0.68) {
+                ctx.fillStyle = theme.low;
+            } else if (ratio < 0.84) {
+                ctx.fillStyle = theme.mid;
+            } else if (ratio < 0.96) {
+                ctx.fillStyle = theme.high;
+            } else {
+                ctx.fillStyle = theme.danger;
+            }
+
+            if (!isActive) {
+                ctx.globalAlpha = 0.16;
+            } else {
+                ctx.globalAlpha = 1;
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = ctx.fillStyle;
+            }
+
+            ctx.fillRect(sx, y, Math.max(1, segmentW), h);
+
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+        }
+
+        // Peak hold line
+        const peakValue = label === 'S' ? peakS : peakA;
+        const peakX = x + (clamp(peakValue, 0, 100) / 100) * w;
+
+        if (peakValue > 2) {
+            ctx.strokeStyle = 'rgba(255,255,160,1)';
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = 'rgba(255,255,180,0.95)';
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(peakX, y - 3);
+            ctx.lineTo(peakX, y + h + 3);
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+        }
+
+        // Ticks and labels
+        if (!COMPACT_MODE) {
+            ctx.font = '10px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = theme.text;
+
+            ticks.forEach((tick, i) => {
+                const tx = x + (tick / 100) * w;
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(tx, y + h + 1);
+                ctx.lineTo(tx, y + h + 4);
+                ctx.stroke();
+
+                if (scale[i]) {
+                    ctx.fillText(scale[i], tx, y + h + 16);
+                }
+            });
+        }
+    }
+
+    function createSettingsButton(panel) {
+        const gear = document.createElement('div');
+
+        gear.innerHTML = '⚙';
+        gear.title = 'Signal Scope Settings';
+
+        gear.style.position = 'absolute';
+        gear.style.top = '6px';
+        gear.style.right = '10px';
+        gear.style.fontSize = '15px';
+        gear.style.cursor = 'pointer';
+        gear.style.opacity = '0.55';
+        gear.style.transition = 'opacity 0.15s ease';
+        gear.style.userSelect = 'none';
+        gear.style.zIndex = '20';
+
+        gear.addEventListener('mouseenter', () => {
+            gear.style.opacity = '1';
+        });
+
+        gear.addEventListener('mouseleave', () => {
+            gear.style.opacity = '0.55';
+        });
+
+        gear.addEventListener('click', () => {
+            toggleSettings(panel);
+        });
+
+        panel.appendChild(gear);
+    }
+
+    function toggleSettings(panel) {
+        if (settingsOpen) {
+            closeSettingsPanel();
+            return;
+        }
+
+        settingsOpen = true;
+        createSettingsPanel(panel);
+    }
+
+    function closeSettingsPanel() {
+        settingsOpen = false;
+
+        if (settingsPanel) {
+            settingsPanel.remove();
+            settingsPanel = null;
+        }
+
+        if (settingsOutsideHandler) {
+            document.removeEventListener('mousedown', settingsOutsideHandler);
+            settingsOutsideHandler = null;
+        }
+
+        if (settingsKeyHandler) {
+            document.removeEventListener('keydown', settingsKeyHandler);
+            settingsKeyHandler = null;
+        }
+    }
+
+    function createSettingsPanel(panel) {
+        if (settingsPanel) {
+            settingsPanel.remove();
+        }
+
+        settingsPanel = document.createElement('div');
+
+        const rect = panel.getBoundingClientRect();
+
+        settingsPanel.style.position = 'fixed';
+        settingsPanel.style.top = `${rect.top + 28}px`;
+        settingsPanel.style.left = `${rect.right - 230}px`;
+        settingsPanel.style.width = '220px';
+        settingsPanel.style.minHeight = '190px';
+        settingsPanel.style.maxHeight = '320px';
+        settingsPanel.style.overflowY = 'auto';
+        settingsPanel.style.padding = '99999';
+        settingsPanel.style.borderRadius = '10px';
+        settingsPanel.style.background = 'rgba(8,12,18,0.94)';
+        settingsPanel.style.backdropFilter = 'blur(10px)';
+        settingsPanel.style.border = '1px solid rgba(255,255,255,0.12)';
+        settingsPanel.style.zIndex = '100';
+        settingsPanel.style.fontSize = '12px';
+        settingsPanel.style.color = '#d9ffff';
+        settingsPanel.style.boxShadow = '0 0 18px rgba(0,0,0,0.45)';
+
+        settingsPanel.innerHTML = `
+    <div style="font-weight:bold;margin-bottom:10px;text-align:center;">
+        Signal Scope
+    </div>
+
+    <label style="display:block;margin-bottom:5px;">Theme</label>
+    <select id="signal-scope-theme-select"
+        style="width:100%;margin-bottom:12px;padding:6px;border-radius:6px;">
+        ${VALID_THEMES.map(theme => `
+            <option value="${theme}" ${theme === activeThemeName ? 'selected' : ''}>
+                ${SIGNAL_SCOPE_THEMES[theme].name}
+            </option>
+        `).join('')}
+    </select>
+
+    <label style="display:block;margin-bottom:5px;">Meter Style</label>
+    <select id="signal-scope-style-select"
+        style="width:100%;margin-bottom:4px;padding:6px;border-radius:6px;">
+        ${VALID_METER_STYLES.map(style => `
+            <option value="${style}" ${style === activeMeterStyle ? 'selected' : ''}>
+                ${style.charAt(0).toUpperCase() + style.slice(1)}
+            </option>
+        `).join('')}
+    </select>
+`;
+        document.body.appendChild(settingsPanel);
+
+        initSettingsEvents();
+        bindSettingsCloseHandlers(panel);
+    }
+
+    function initSettingsEvents() {
+        const themeSelect = document.getElementById('signal-scope-theme-select');
+        const styleSelect = document.getElementById('signal-scope-style-select');
+
+        if (themeSelect) {
+            themeSelect.addEventListener('change', e => {
+                activeThemeName = e.target.value;
+                safeLSSet(STORAGE_THEME, activeThemeName);
+
+                console.log(`[${pluginName}] Theme changed to ${activeThemeName}`);
+            });
+        }
+
+        if (styleSelect) {
+            styleSelect.addEventListener('change', e => {
+                activeMeterStyle = e.target.value;
+                safeLSSet(STORAGE_METER_STYLE, activeMeterStyle);
+
+                console.log(`[${pluginName}] Meter style changed to ${activeMeterStyle}`);
+            });
+        }
+    }
+
+    function drawLedBar(options) {
+        const ledOptions = {
+            ...options,
+            ledMode: true
+        };
+
+        drawSegmentedBar(ledOptions);
+    }
+
+    function bindSettingsCloseHandlers(panel) {
+        if (settingsOutsideHandler) {
+            document.removeEventListener('mousedown', settingsOutsideHandler);
+        }
+
+        if (settingsKeyHandler) {
+            document.removeEventListener('keydown', settingsKeyHandler);
+        }
+
+        settingsOutsideHandler = (e) => {
+            if (!settingsPanel)
+                return;
+
+            const clickedInsidePanel = settingsPanel.contains(e.target);
+            const clickedGear = panel.contains(e.target) && e.target.textContent === '⚙';
+
+            if (!clickedInsidePanel && !clickedGear) {
+                closeSettingsPanel();
+            }
+        };
+
+        settingsKeyHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeSettingsPanel();
+            }
+        };
+
+        setTimeout(() => {
+            document.addEventListener('mousedown', settingsOutsideHandler);
+            document.addEventListener('keydown', settingsKeyHandler);
+        }, 0);
+    }
+
+    function drawThinBar({
+        label,
+        y,
+        value,
+        scale,
+        ticks
+    }) {
+        const x = COMPACT_MODE ? 22 : 36;
+        const w = COMPACT_MODE ? 230 : 250;
+        const h = COMPACT_MODE ? 4 : 4;
+
+        const fillW = clamp((value / 100) * w, 0, w);
+        const theme = getThemeColors();
+
+        ctx.font = 'bold 11px Arial, sans-serif';
+        ctx.fillStyle = theme.text;
+        ctx.textAlign = 'right';
+        ctx.fillText(label, x - 8, y + 6);
+
+        ctx.fillStyle = 'rgba(120, 160, 180, 0.26)';
+        ctx.fillRect(x, y + 2, w, h);
+
+        ctx.strokeStyle = 'rgba(180, 230, 255, 0.22)';
+        ctx.strokeRect(x, y + 1, w, h + 2);
+
+        const gradient = ctx.createLinearGradient(x, 0, x + w, 0);
+        gradient.addColorStop(0.0, theme.low);
+        gradient.addColorStop(0.7, theme.mid);
+        gradient.addColorStop(1.0, theme.high);
+
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = theme.low;
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x, y + 2, fillW, h);
+        ctx.shadowBlur = 0;
+
+        const peakValue = label === 'S' ? peakS : peakA;
+        const peakX = x + (clamp(peakValue, 0, 100) / 100) * w;
+
+        if (peakValue > 2) {
+            ctx.strokeStyle = 'rgba(255,255,180,1)';
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = 'rgba(255,255,180,0.75)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(peakX, y - 1);
+            ctx.lineTo(peakX, y + h + 5);
+            ctx.stroke();
+        }
+    }
+
+    function drawNeonBar({
+        label,
+        y,
+        value,
+        scale,
+        ticks
+    }) {
+        const x = COMPACT_MODE ? 22 : 36;
+        const w = COMPACT_MODE ? 230 : 250;
+        const h = COMPACT_MODE ? 9 : 8;
+
+        const fillW = clamp((value / 100) * w, 0, w);
+        const theme = getThemeColors();
+
+        ctx.font = 'bold 11px Arial, sans-serif';
+        ctx.fillStyle = theme.text;
+        ctx.textAlign = 'right';
+        ctx.fillText(label, x - 8, y + 7);
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        roundRect(ctx, x, y, w, h, h / 2, true, false);
+
+        const gradient = ctx.createLinearGradient(x, 0, x + w, 0);
+        gradient.addColorStop(0.0, theme.low);
+        gradient.addColorStop(0.62, theme.mid);
+        gradient.addColorStop(0.86, theme.high);
+        gradient.addColorStop(1.0, theme.danger);
+
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = theme.low;
+        ctx.fillStyle = gradient;
+        roundRect(ctx, x, y, fillW, h, h / 2, true, false);
+        ctx.shadowBlur = 0;
+
+        ctx.strokeStyle = theme.border;
+        roundRect(ctx, x, y, w, h, h / 2, false, true);
+
+        const peakValue = label === 'S' ? peakS : peakA;
+        const peakX = x + (clamp(peakValue, 0, 100) / 100) * w;
+
+        if (peakValue > 2) {
+            ctx.fillStyle = 'rgba(255,255,220,1)';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(255,255,180,0.95)';
+            roundRect(ctx, peakX - 2, y - 3, 4, h + 6, 2, true, false);
+            ctx.shadowBlur = 0;
+        }
+
+        if (!COMPACT_MODE) {
+            drawScaleTicks(x, y, w, h, scale, ticks, theme);
+        }
+    }
+
+    function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+        const radius = Math.min(r, w / 2, h / 2);
+
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+
+        if (fill)
+            ctx.fill();
+        if (stroke)
+            ctx.stroke();
+    }
+
+    function drawScaleTicks(x, y, w, h, scale, ticks, theme) {
+        ctx.font = '10px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = theme.text;
+
+        ticks.forEach((tick, i) => {
+            const tx = x + (tick / 100) * w;
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(tx, y + h + 1);
+            ctx.lineTo(tx, y + h + 4);
+            ctx.stroke();
+
+            if (scale[i]) {
+                ctx.fillText(scale[i], tx, y + h + 16);
+            }
+        });
+    }
+
+    function drawMeterBar(options) {
+        switch (activeMeterStyle) {
+        case 'segmented':
+            drawSegmentedBar(options);
+            return;
+
+        case 'led':
+            drawLedBar(options);
+            return;
+
+        case 'thin':
+            drawThinBar(options);
+            return;
+
+        case 'neon':
+            drawNeonBar(options);
+            return;
+
+        case 'classic':
+        default:
+            drawClassicBar(options);
+            return;
+        }
+    }
+
+    function drawClassicBar({
         label,
         y,
         value,
@@ -378,10 +963,10 @@
         // Gradient fill
         const gradient = ctx.createLinearGradient(x, 0, x + w, 0);
 
-        gradient.addColorStop(0.0, theme.accent);
-        gradient.addColorStop(0.68, '#9dff00');
-        gradient.addColorStop(0.84, '#ffd000');
-        gradient.addColorStop(1.0, '#ff3030');
+        gradient.addColorStop(0.0, theme.low);
+        gradient.addColorStop(0.68, theme.mid);
+        gradient.addColorStop(0.84, theme.high);
+        gradient.addColorStop(1.0, theme.danger);
 
         ctx.shadowBlur = 8;
         ctx.shadowColor = 'rgba(0,255,160,0.35)';
