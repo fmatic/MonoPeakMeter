@@ -31,6 +31,7 @@
     const pluginUpdateUrl = 'https://raw.githubusercontent.com/fmatic/SignalScope/main/SignalScope/signalscope.js';
 
     let stereoActive = false;
+    let monoActive = false;
     let forcedMonoActive = false;
     let rdsActive = false;
     let rdsBlink = 0;
@@ -61,6 +62,8 @@
         createPanel();
         initAudio();
         startRenderLoop();
+
+        console.log(`[${pluginName}] v${pluginVersion} loaded`);
     });
 
     function cssVar(name, fallback) {
@@ -225,6 +228,7 @@
         const panel = document.createElement('div');
         panel.className = 'panel-33';
         panel.id = 'signal-scope-container';
+        panel.title = `${pluginName} ${pluginVersion}`;
         panel.style.width = '33%';
         panel.style.height = COMPACT_MODE ? '96px' : '123px';
         panel.style.position = 'relative';
@@ -272,7 +276,7 @@
     function injectStyles() {
         const style = document.createElement('style');
 
-        style.textContent = `
+  style.textContent = `
         #signal-scope-container {
             background: transparent !important;
             backdrop-filter: none !important;
@@ -280,9 +284,10 @@
             box-shadow: none;
         }
 
-       #signal-scope-container h2 {
-    text-shadow: none !important;
-}
+        #signal-scope-container h2 {
+            text-shadow: none !important;
+        }
+
         @media only screen and (max-width: 768px) {
             #signal-scope-container {
                 width: 100% !important;
@@ -307,8 +312,8 @@
             displayS += (targetS - displayS) * 0.18;
             displayA += (targetA - displayA) * 0.22;
 
-            peakS = Math.max(peakS - 0.12, displayS);
-            peakA = Math.max(peakA - 0.18, displayA);
+            peakS = Math.max(peakS - 0.09, displayS);
+            peakA = Math.max(peakA - 0.14, displayA);
             if (displayA > CLIP_THRESHOLD) {
                 clipHold = 12;
                 clipActive = true;
@@ -461,7 +466,11 @@
         }
 
         forcedMonoActive = detectForcedMono();
+
         stereoActive = detectStereoFromUi() && !forcedMonoActive;
+
+        // Effective mono state
+        monoActive = forcedMonoActive || !stereoActive;
     }
 
     function detectForcedMono() {
@@ -483,7 +492,7 @@
         const y = 8;
 
         drawLed(startX, y, stereoActive, 'ST', '#7dff7d');
-        drawLed(startX + 48, y, forcedMonoActive, 'MO', '#9dc8ff');
+        drawLed(startX + 48, y, monoActive, 'MO', '#9dc8ff');
         drawLed(startX + 96, y, rdsActive, 'RDS', '#7ddcff', rdsBlink > 0);
         drawLed(startX + 154, y, clipActive, 'CLIP', '#ff4a4a', clipActive);
     }
@@ -492,7 +501,7 @@
         ctx.font = 'bold 10px Arial, sans-serif';
         ctx.textAlign = 'left';
 
-        const blinkBoost = blink && (Math.floor(Date.now() / 120) % 2 === 0);
+        const blinkBoost = blink && (Math.floor(Date.now() / 220) % 2 === 0);
 
         const size = 8;
 
