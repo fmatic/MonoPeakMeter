@@ -8,6 +8,7 @@
 
 ![Broadcast Meter Demo](docs/IMG_5472.GIF)
 
+
 Signal Scope is a modern RF signal and audio modulation meter plugin for FM-DX-Webserver.
 
 It combines broadcast-style metering, stereo/RDS indicators and customizable visual themes into a lightweight native-looking plugin.
