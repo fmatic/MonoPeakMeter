@@ -18,11 +18,15 @@ It combines broadcast-style metering, stereo/RDS indicators and customizable vis
 - Real-time audio modulation meter
 - Peak hold indicators
 - Stereo / Mono / RDS / CLIP LEDs
+- Smooth LED fade animations
 - Multiple meter styles
 - Theme system
+- Optional glass panel effect
+- Optional live meter value text
 - Native FM-DX-Webserver visual integration
 - Compact and lightweight
 - Mobile friendly
+- Mini / Normal / XL panel sizes
 - Settings popup UI
 - Update notification support
 
@@ -42,6 +46,7 @@ It combines broadcast-style metering, stereo/RDS indicators and customizable vis
 - Amber Orange
 - Arctic Cyan
 - Nightwish Purple
+- Crazy Citrus
 
 ## Installation
 
@@ -99,6 +104,19 @@ neon
 ```
 
 ## What's Nse
+
+v0.5.4
+
+This release focuses on UI polish, mobile refinement and overall visual consistency.
+
+Changes:
+• New optional value text display
+• Cleaner and calmer settings UI
+• Improved mini/mobile layout
+• Refined glass panel appearance
+• Better meter spacing and alignment
+• Smoother LED fade behavior
+• Internal cleanup and polish
 
 v0.5.3
  
