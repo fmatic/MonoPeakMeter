@@ -98,6 +98,27 @@ thin
 neon
 ```
 
+## What's Nse
+
+v0.5.3
+ 
+- Glow intensity modes
+- Peak Hold speed control
+- Glass panel mode
+- Mini / Normal / XL panel sizes
+- Smooth LED fade animations
+- Improved settings panel UI
+- Neon and segmented meter improvements
+- Better theme transitions
+- Enhanced visual polish
+
+Improved:
+- Meter rendering performance
+- Peak hold visibility
+- Theme persistence
+- Responsive layout handling
+
+
 ## Roadmap
 
 ### v0.5.3
